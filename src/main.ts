@@ -1,97 +1,72 @@
 import './style.css';
-
 import { html, render } from 'uhtml';
+
+interface Controller {
+  load: (...args: any[]) => any;
+}
 
 type ListViewProps = {
   onToggleTask: (taskUid: string) => void;
-};
-
-type ListViewData = {
   name: string;
   tasks: Array<Task>;
 };
 
-class ListView {
-  constructor(private props: ListViewProps = { onToggleTask: () => {} }) {}
-
-  render(data: ListViewData) {
-    return html`
-      <h2>${data.name}</h2>
+function ListView(props: ListViewProps) {
+  return html`
+      <h2>${props.name}</h2>
 
       <div>
         ${
-          data.tasks.length === 0
+          props.tasks.length === 0
             ? html`<div>No task so far, <span>add one?</span></div>`
             : null
         }
         
-        ${data.tasks.map(
+        ${props.tasks.map(
           (task) => html`<div>
           <button @click=${() => {
-            this.props.onToggleTask(task.uid);
+            props.onToggleTask(task.uid);
           }}>${task.done ? 'X' : 'O'}</button>
           ${task.name}
         </div>`
         )}
       </div>
     `;
-  }
 }
 
 type AsideProps = {
   onListClick: (listUid: string) => void;
+  lists: Array<{
+    uid: string;
+    name: string;
+    todosCount: number;
+    selected: boolean;
+  }>;
 };
 
-class AsideView {
-  constructor(private props: AsideProps) {}
-
-  render(data: {
-    lists: Array<{
-      uid: string;
-      name: string;
-      todosCount: number;
-      selected: boolean;
-    }>;
-  }) {
-    return html`
+function AsideView(props: AsideProps) {
+  return html`
       <p>Listes</p>
       <nav>
-        ${data.lists.map(
+        ${props.lists.map(
           (list) =>
-            html`<p @click=${() => this.props.onListClick(list.uid)}>
+            html`<p @click=${() => props.onListClick(list.uid)}>
                 ${list.selected ? '- ' : ''}${list.name} <span>${
               list.todosCount > 0 ? list.todosCount : ''
             }</span></p>`
         )}
       </nav>
     `;
-  }
 }
 
 class ListsController {
   private app: Application;
-  asideView: AsideView;
-  listView: ListView;
 
   selectedListUid: string | null;
 
   constructor(app: Application) {
     this.selectedListUid = null;
-
     this.app = app;
-
-    this.asideView = new AsideView({
-      onListClick: (listUid: string) => {
-        this.load(listUid);
-      },
-    });
-
-    this.listView = new ListView({
-      onToggleTask: (taskUid: string) => {
-        this.app.lists.toggleTask(this.selectedListUid!, taskUid);
-        this.rerender();
-      },
-    });
   }
 
   load(listUid: string) {
@@ -108,6 +83,16 @@ class ListsController {
       </div>
     `;
 
+    this.rerender();
+  }
+
+  onToggleTask(taskUid: string) {
+    this.app.lists.toggleTask(this.selectedListUid!, taskUid);
+    this.rerender();
+  }
+
+  onSelectList(listUid: string) {
+    this.selectedListUid = listUid;
     this.rerender();
   }
 
@@ -130,14 +115,18 @@ class ListsController {
 
     render(
       this.app.root.querySelector('aside')!,
-      this.asideView.render({ lists: listsData })
+      AsideView({
+        lists: listsData,
+        onListClick: this.onSelectList.bind(this),
+      })
     );
   }
 
   renderListView(list: TaskList) {
     render(
       this.app.root.querySelector('main')!,
-      this.listView.render({
+      ListView({
+        onToggleTask: this.onToggleTask.bind(this),
         name: list.name,
         tasks: list.tasks,
       })
