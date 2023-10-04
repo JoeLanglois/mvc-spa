@@ -1,3 +1,5 @@
+import './style.css';
+
 import { html, render } from 'uhtml';
 
 type ListViewProps = {
@@ -86,13 +88,7 @@ class ListsController {
 
     this.listView = new ListView({
       onToggleTask: (taskUid: string) => {
-        const task = this.app.lists
-          .get(this.selectedListUid!)
-          .tasks.find((t) => t.uid === taskUid);
-        if (!task) return;
-
-        task.done = !task.done;
-
+        this.app.lists.toggleTask(this.selectedListUid!, taskUid);
         this.rerender();
       },
     });
@@ -102,8 +98,14 @@ class ListsController {
     this.selectedListUid = listUid;
 
     this.app.root.innerHTML = `
-      <aside></aside>
-      <main></main>
+      <header>
+        Tâches
+      </header>
+
+      <div id="wrapper">
+        <aside></aside>
+        <main></main>
+      </div>
     `;
 
     this.rerender();
@@ -177,6 +179,13 @@ class TaskListsRepo {
   all() {
     return Object.values(this.lists);
   }
+
+  toggleTask(listUid: string, taskUid: string) {
+    const t = this.lists[listUid].tasks.find((t) => t.uid === taskUid);
+    if (!t) return;
+
+    t.done = !t.done;
+  }
 }
 
 class Application {
@@ -186,7 +195,7 @@ class Application {
   lists: TaskListsRepo;
 
   constructor() {
-    this.root = document.body;
+    this.root = document.getElementById('app')!;
     this.currentController = null;
 
     this.lists = new TaskListsRepo();
